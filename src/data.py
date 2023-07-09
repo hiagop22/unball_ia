@@ -1,15 +1,55 @@
-import math
+from collections import deque, namedtuple
+import numpy as np
 import torch
 import random
-import numpy as np
-from collections import deque, namedtuple
-from .utils import angle_between
+from .utils import normalized_angle, angle_between
+from torch.utils import data as tdata
+import math
 
 # Named tuple for storing experience steps gathered in training
 Experience = namedtuple(
     'Experience',
     field_names=['state', 'action', 'reward', 'done', 'next_state'],
 )
+
+
+class ProcessStateV1:
+    def __init__(self, state_size: int):
+        self.state_size = state_size
+    
+    def process(self, state):
+        robot2control = 0
+
+        robot = state['ally'][robot2control]['pos_xy']
+        angle_robot = state['ally'][robot2control]['theta']
+        ball = state['ball']['pos_xy']
+        v_robot = state['ally'][robot2control]['vel_xy']
+        v_ball = state['ball']['vel_xy']
+        robot_vel_unit = np.array([math.cos(angle_robot), math.sin(angle_robot)])
+        # Remove the number later and use constant
+        goal = np.array([0.75,0])
+
+        robot_ball = ball - robot
+        norm_robot_ball = np.linalg.norm(robot_ball)
+        robot_ball_unit = robot_ball/(norm_robot_ball + 10e-5)
+        proj_robot_robotball = np.dot(robot_ball_unit, robot_vel_unit)
+
+        robot_goal = goal - robot
+        norm_robot_goal = np.linalg.norm(robot_goal)
+        robot_goal_unit = robot_goal /(norm_robot_goal + 10e-5)
+        proj_robot_robotgoal = np.dot(robot_goal_unit, robot_vel_unit)
+
+        vel_robot_ball = v_ball - v_robot
+        norm_vel_robot_ball = np.linalg.norm(vel_robot_ball)
+        vel_robot_ball_unit = vel_robot_ball/(norm_vel_robot_ball + 10e-5)
+        proj_vel_robot_ball = np.dot(vel_robot_ball_unit, robot_vel_unit)
+
+        processed_state = [norm_robot_ball, proj_robot_robotball, 
+                            norm_robot_goal, proj_robot_robotgoal,
+                            norm_vel_robot_ball, proj_vel_robot_ball,
+                            ] 
+        
+        return processed_state
         
 
 class AbsoluteState:
@@ -25,7 +65,9 @@ class AbsoluteState:
         w_robot = state['ally'][robot2control]['w']
         ball = state['ball']['pos_xy']
         v_ball = state['ball']['vel_xy']
+        robot_vel_unit = np.array([math.cos(angle_robot), math.sin(angle_robot)])
         
+        # Remove the number later and use constant
         goal = np.array([0.75,0])
 
         near_wall1 = 1 - (-robot[0] + 0.75)
@@ -64,7 +106,7 @@ class RelativeState:
 
         ball = state['ball']['pos_xy']
         v_ball = state['ball']['vel_xy']
-        
+
         opponent_goal = np.array([0.75,0.0])
         ally_goal = -opponent_goal
 
@@ -72,7 +114,6 @@ class RelativeState:
         norm_robot_ball = np.linalg.norm(robot_ball)
         velrobot_robotballangle = angle_between(robot_vel_unit, robot_ball)
 
-        ball_opponentgoal = opponent_goal - ball
         ball_allygoal = ally_goal - ball
 
         robot_allygoal = ally_goal - robot

@@ -6,7 +6,7 @@ import numpy as np
 from typing import List
 from torch.optim.optimizer import Optimizer
 from .data import Experience
-from .utils import weights_init
+from .utils import norm_grad, weights_init
 import torch.nn as nn
 
 device = torch.device('cuda:1')
@@ -115,9 +115,13 @@ class DDPGAgent():
 
         self.actor = hydra.utils.instantiate(model_conf.actor).apply(weights_init)
         self.actor = self.actor.to(device)
+        # if torch.cuda.device_count() > 1:
+        #     self.actor = nn.DataParallel(self.actor)
 
         self.critic = hydra.utils.instantiate(model_conf.critic).apply(weights_init)
         self.critic = self.critic.to(device)
+        # if torch.cuda.device_count() > 1:
+        #     self.critic = nn.DataParallel(self.critic)
 
         self.process_state = hydra.utils.instantiate(process_state_conf)
         self.memory = hydra.utils.instantiate(memory_conf)
@@ -130,11 +134,17 @@ class DDPGAgent():
 
         self.tau = tau
 
+        # self.target_actor = hydra.utils.instantiate(model_conf.actor).apply(weights_init)
         self.target_actor = hydra.utils.instantiate(model_conf.actor)
         self.target_actor = self.target_actor.to(device)
+        # if torch.cuda.device_count() > 1:
+        #     self.target_actor = nn.DataParallel(self.target_actor)
 
+        # self.target_critic = hydra.utils.instantiate(model_conf.critic).apply(weights_init)
         self.target_critic = hydra.utils.instantiate(model_conf.critic)
         self.target_critic = self.target_critic.to(device)
+        # if torch.cuda.device_count() > 1:
+        #     self.target_critic = nn.DataParallel(self.target_critic)
 
         self.hard_update_target_networks()
 
@@ -178,7 +188,7 @@ class DDPGAgent():
 
         return action
 
-    def train_networks(self, batch_size, step, reward):
+    def train_networks(self, batch_size, step):
 
         idxs, states, actions, rewards, dones, next_states, _ = self.memory.sample(batch_size)
         
@@ -198,6 +208,7 @@ class DDPGAgent():
         critic_loss = nn.MSELoss()(q_targets, q_values)
         self.critic_opt.zero_grad()
         critic_loss.backward()
+        # norm_grad_critic = norm_grad(self.critic)
         torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.max_grad_norm.critic)
         self.critic_opt.step()
 
@@ -205,6 +216,7 @@ class DDPGAgent():
         actor_loss = -self.critic(states, self.actor(states)).mean()
         self.actor_opt.zero_grad()
         actor_loss.backward()
+        # norm_grad_actor = norm_grad(self.actor)
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm.actor)
         self.actor_opt.step()
 
@@ -217,7 +229,8 @@ class DDPGAgent():
             'actor_lr': self.actor_opt.param_groups[0]['lr'],
             'critic_lr': self.critic_opt.param_groups[0]['lr'],
             'memory_size': len(self.memory),
-            'reward': reward,
+            # 'norm_grad_actor': norm_grad_actor,
+            # 'norm_grad_critic': norm_grad_critic,
         }
 
         return output
@@ -276,9 +289,11 @@ class TD3Agent(DDPGAgent):
         self.noise_clip = noise_clip
         self.target_noise = target_noise
         self.policy_delay = policy_delay
+        # self.actor = hydra.utils.instantiate(model_conf.actor).apply(weights_init)
         self.actor = hydra.utils.instantiate(model_conf.actor)
         self.actor = self.actor.to(device)
 
+        # self.critic = hydra.utils.instantiate(model_conf.critic).apply(weights_init)
         self.critic = hydra.utils.instantiate(model_conf.critic)
         self.critic = self.critic.to(device)
 
@@ -292,7 +307,7 @@ class TD3Agent(DDPGAgent):
 
         self.actor_opt, self.critic_opt, self.actor_sch, self.critic_sch = self.configure_optimizers()
 
-    def train_networks(self, batch_size, step, reward):
+    def train_networks(self, batch_size, step):
 
         idxs, states, actions, rewards, dones, next_states, _ = self.memory.sample(batch_size)
         
@@ -302,6 +317,9 @@ class TD3Agent(DDPGAgent):
         dones = dones.to(device)
         next_states = next_states.to(device)
 
+        # is_weight = is_weight.to(device)
+
+        # critic
         q_values1, q_values2 = self.critic(states, actions)
         
         with torch.no_grad():
@@ -320,6 +338,7 @@ class TD3Agent(DDPGAgent):
         critic_loss = nn.MSELoss()(q_targets, q_values1) + nn.MSELoss()(q_targets, q_values2)
         self.critic_opt.zero_grad()
         critic_loss.backward()
+        # norm_grad_critic = norm_grad(self.critic)
         torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.max_grad_norm.critic)
         self.critic_opt.step()
 
@@ -332,6 +351,7 @@ class TD3Agent(DDPGAgent):
 
             self.actor_opt.zero_grad()
             actor_loss.backward()
+            # norm_grad_actor = norm_grad(self.actor)
             torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm.actor)
             self.actor_opt.step()
 
@@ -346,7 +366,8 @@ class TD3Agent(DDPGAgent):
             'actor_lr': self.actor_opt.param_groups[0]['lr'],
             'critic_lr': self.critic_opt.param_groups[0]['lr'],
             'memory_size': len(self.memory),
-            'reward': reward,
+            # 'norm_grad_actor': norm_grad_actor,
+            # 'norm_grad_critic': norm_grad_critic,
         }
 
         return output

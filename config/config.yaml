@@ -2,10 +2,10 @@ defaults:
   - _self_
   - optimizer: adam
   - scheduler: ReduceLROnPlateau
-  - model: ddpg
+  - model: td3
   - memory: default
   - watch_metric: default
-  - agent: ddpg
+  - agent: td3
   - process_state: relative
   - env: FiraSimRewards
 
