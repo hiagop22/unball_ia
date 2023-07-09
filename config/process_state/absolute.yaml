@@ -1,2 +1,2 @@
 _target_: src.data.AbsoluteState
-state_size: 16
+state_size: 12

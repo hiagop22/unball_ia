@@ -1,15 +1,14 @@
-import torch
-from torch import nn
-from omegaconf import DictConfig
 import hydra
+import torch
 import numpy as np
+from torch import nn
 from typing import List
+from omegaconf import DictConfig
 from torch.optim.optimizer import Optimizer
 from .data import Experience
 from .utils import weights_init
-import torch.nn as nn
 
-device = torch.device('cuda:1')
+device = torch.device('cuda:0')
 
 class BasicBlock(nn.Module):
     def __init__(self, hidden_size: int, activation = nn.Mish):
@@ -130,11 +129,17 @@ class DDPGAgent():
 
         self.tau = tau
 
+        # self.target_actor = hydra.utils.instantiate(model_conf.actor).apply(weights_init)
         self.target_actor = hydra.utils.instantiate(model_conf.actor)
         self.target_actor = self.target_actor.to(device)
+        # if torch.cuda.device_count() > 1:
+        #     self.target_actor = nn.DataParallel(self.target_actor)
 
+        # self.target_critic = hydra.utils.instantiate(model_conf.critic).apply(weights_init)
         self.target_critic = hydra.utils.instantiate(model_conf.critic)
         self.target_critic = self.target_critic.to(device)
+        # if torch.cuda.device_count() > 1:
+        #     self.target_critic = nn.DataParallel(self.target_critic)
 
         self.hard_update_target_networks()
 
@@ -276,9 +281,11 @@ class TD3Agent(DDPGAgent):
         self.noise_clip = noise_clip
         self.target_noise = target_noise
         self.policy_delay = policy_delay
+        self.actor = hydra.utils.instantiate(model_conf.actor).apply(weights_init)
         self.actor = hydra.utils.instantiate(model_conf.actor)
         self.actor = self.actor.to(device)
 
+        self.critic = hydra.utils.instantiate(model_conf.critic).apply(weights_init)
         self.critic = hydra.utils.instantiate(model_conf.critic)
         self.critic = self.critic.to(device)
 
@@ -302,6 +309,7 @@ class TD3Agent(DDPGAgent):
         dones = dones.to(device)
         next_states = next_states.to(device)
 
+        # critic
         q_values1, q_values2 = self.critic(states, actions)
         
         with torch.no_grad():

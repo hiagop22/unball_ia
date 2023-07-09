@@ -10,7 +10,7 @@ Experience = namedtuple(
     'Experience',
     field_names=['state', 'action', 'reward', 'done', 'next_state'],
 )
-        
+
 
 class AbsoluteState:
     def __init__(self, state_size: int):
@@ -26,12 +26,8 @@ class AbsoluteState:
         ball = state['ball']['pos_xy']
         v_ball = state['ball']['vel_xy']
         
+        # Remove the number later and use constant
         goal = np.array([0.75,0])
-
-        near_wall1 = 1 - (-robot[0] + 0.75)
-        near_wall2 = 1 - (robot[0] + 0.75)
-        near_wall3 = 1 - (-robot[1] + 0.65)
-        near_wall4 = 1 - (robot[1] + 0.65)
 
         processed_state = [ robot[0], robot[1],
                             ball[0], ball[1],
@@ -39,8 +35,6 @@ class AbsoluteState:
                             v_ball[0],v_ball[1],
                             goal[0], goal[1],
                             angle_robot, w_robot / 6.28,
-                            near_wall1, near_wall2,
-                            near_wall3, near_wall4,
                             ]
 
         return processed_state
@@ -72,7 +66,6 @@ class RelativeState:
         norm_robot_ball = np.linalg.norm(robot_ball)
         velrobot_robotballangle = angle_between(robot_vel_unit, robot_ball)
 
-        ball_opponentgoal = opponent_goal - ball
         ball_allygoal = ally_goal - ball
 
         robot_allygoal = ally_goal - robot
@@ -98,7 +91,7 @@ class RelativeState:
         return processed_state
 
 class Memory(object):
-    def __init__(self, memory_size: int, is_per: bool =False) -> None:
+    def __init__(self, memory_size: int, is_per: bool = False) -> None:
         super().__init__()
         self.memory = deque(maxlen=memory_size)
         self.is_per = is_per

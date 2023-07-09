@@ -6,7 +6,7 @@ defaults:
   - memory: default
   - watch_metric: default
   - agent: ddpg
-  - process_state: relative
+  - process_state: absolute
   - env: FiraSimRewards
 
 only_get_onnx: False
