@@ -49,9 +49,3 @@ Now, you can install all dependencies
 ```
 pip install -r requirements.txt
 ```
-
-## Clearml credentils
-- Save clearml_unball.conf in your home
-
-## Clearml Dashboard
-Access [https://app.clear.ml/projects](https://app.clear.ml/projects) using unball gmail account to see all stopped, broke and running projects.
