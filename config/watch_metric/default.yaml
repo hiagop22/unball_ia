@@ -1,0 +1,7 @@
+actor:
+  watch_metric: reward
+  watch_metric_mode: max
+  
+critic:
+  watch_metric: reward
+  watch_metric_mode: max

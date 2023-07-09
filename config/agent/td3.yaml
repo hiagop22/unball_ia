@@ -1,0 +1,7 @@
+_target_: src.models.TD3Agent
+gamma: 0.9
+max_grad_norm: 
+  actor: 1.0
+  critic: 1.0
+tau: 0.001
+policy_delay: 2

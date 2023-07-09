@@ -1,0 +1,26 @@
+defaults:
+  - _self_
+  - optimizer: adam
+  - scheduler: ReduceLROnPlateau
+  - model: ddpg
+  - memory: default
+  - watch_metric: default
+  - agent: ddpg
+  - process_state: relative
+  - env: FiraSimRewards
+
+only_get_onnx: False
+act_noise: 0.2
+target_noise: 0.2
+noise_clip: 0.5
+action_size: 2
+sync_max_dist_update: 300
+sync_save_onnx: 500
+sync_save_pt: 10
+max_epochs: 10000000
+batch_size: 256
+project_name: reinforcement_learning
+task_name: ddpg_rel
+is_debug: False
+seed: 747
+logdir: ./outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
